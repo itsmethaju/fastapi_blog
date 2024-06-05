@@ -1,7 +1,7 @@
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from pydantic import BaseModel
 from typing import List
-from models import blog,Work,Team,Contact
+from models.models import blog,Work,Team,Contact
 import psycopg2
 from fastapi.middleware.cors import CORSMiddleware
 from helper.email import send_confirmation_email
@@ -25,7 +25,7 @@ app.add_middleware(
 
 
 @app.post("/blog/")
-async def upload_video(description: str, title: str, video_url: str):
+async def upload_video(description: str, title: str, image_url: str):
     with connection.cursor() as cursor:
         try:
             insert_query = '''
@@ -33,7 +33,7 @@ async def upload_video(description: str, title: str, video_url: str):
             VALUES (%s, %s, %s)
             RETURNING id
             '''
-            cursor.execute(insert_query, (video_url, description, title))
+            cursor.execute(insert_query, (image_url, description, title))
 
             connection.commit()
             video_id = cursor.fetchone()[0]
@@ -42,7 +42,7 @@ async def upload_video(description: str, title: str, video_url: str):
             raise HTTPException(status_code=500, detail=str(e))
     
 
-    return {"id": video_id, "video_url": video_url, "description": description, "title": title}
+    return {"id": video_id, "image_url": image_url, "description": description, "title": title}
 
 @app.get("/get_blog/", response_model=List[blog])
 async def get_videos():
@@ -158,6 +158,19 @@ async def create_contact(name: str, email: str, company: str,query:str):
     
     return {"message": "Contact created successfully"}
 
+@app.get("/contacts/")
+async def get_contacts():
+    with connection.cursor() as cursor:
+        try:
+            select_query = '''
+            SELECT * FROM quary
+            '''
+            cursor.execute(select_query)
+            contacts = cursor.fetchall()
+            contacts_dict = [{"id": row[0], "name": row[1], "email": row[2], "company": row[3], "query": row[4]} for row in contacts]
+            return contacts_dict
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/email/")
 async def create_contact(email: str):
@@ -179,3 +192,18 @@ async def create_contact(email: str):
             raise HTTPException(status_code=500, detail=str(e))
     
     return {"message": "email successfully"}
+
+@app.get("/email/")
+async def get_emails():
+    with connection.cursor() as cursor:
+        try:
+            select_query = '''
+            SELECT email FROM contactMail
+            '''
+
+            cursor.execute(select_query)
+            emails = cursor.fetchall()
+            emails_list = [email[0] for email in emails]  # Extracting emails from tuples
+            return {"emails": emails_list}
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
